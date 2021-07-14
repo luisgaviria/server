@@ -1,5 +1,5 @@
 const _ = require("lodash");
-const Path = require("path-parser").default;
+const { Path } = require("path-parser");
 const { URL } = require("url");
 const mongoose = require("mongoose");
 const requireLogin = require("../middlewares/requireLogin");
@@ -18,13 +18,27 @@ module.exports = (app) => {
     res.send(surveys);
   });
 
-  app.get("/api/surveys/:surveyId/:choice", (req, res) => {
+  app.get("/api/surveys/:surveyId/:choice", async (req, res) => {
+    const surveyId = req.params.surveyId;
+    const choice = req.params.choice;
+    console.log(surveyId, choice);
+    const surveytemp = await Survey.findOne({
+      _id: surveyId,
+    });
+    if (choice == "Yes") {
+      surveytemp.yes++;
+    } else if (choice == "No") {
+      surveytemp.no++;
+    }
+    surveytemp.lastResponded = new Date();
+    surveytemp.recipients[0].responded = true;
+    await surveytemp.save();
     res.send("<h1>Thanks for the feedback!</h1>");
   });
 
   app.post("/api/surveys/webhooks", (req, res) => {
-    const p = Path.createPath("/api/surveys/:surveyId/:choice");
-
+    const p = new Path("/api/surveys/:surveyId/:choice");
+    console.log(req.body);
     _.chain(req.body)
       .map(({ email, url }) => {
         const match = p.test(new URL(url).pathname);
